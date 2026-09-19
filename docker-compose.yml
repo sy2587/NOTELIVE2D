@@ -1,0 +1,16 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: kumi-study-mysql
+    environment:
+      MYSQL_DATABASE: kumi_study
+      MYSQL_USER: kumi
+      MYSQL_PASSWORD: change-me
+      MYSQL_ROOT_PASSWORD: change-me-root
+    ports:
+      - "3306:3306"
+    volumes:
+      - kumi-study-mysql-data:/var/lib/mysql
+
+volumes:
+  kumi-study-mysql-data:
