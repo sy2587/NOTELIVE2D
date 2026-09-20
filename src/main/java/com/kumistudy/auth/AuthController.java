@@ -1,6 +1,15 @@
 package com.kumistudy.auth;
 
+import com.kumistudy.auth.dto.LoginRequest;
+import com.kumistudy.auth.dto.RegisterRequest;
+import com.kumistudy.common.api.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,19 +22,29 @@ public class AuthController {
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
-
     @PostMapping("/register")
-    public void register() {
-        // TODO: 改成接收 @Valid RegisterRequest，呼叫 service 並回傳統一 ApiResponse。
+    public ResponseEntity<ApiResponse<Map<String, String>>> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "message", "註冊成功",
+                "username", request.username()
+        )));
     }
-
     @PostMapping("/login")
-    public void login() {
-        // TODO: 接收登入 DTO，成功後建立 Session，不要把密碼放進回應。
+    public ResponseEntity<ApiResponse<Map<String, String>>> login(
+            @Valid @RequestBody LoginRequest request,
+                        HttpServletRequest servletRequest,
+                        HttpServletResponse servletResponse) {
+                User user = authService.login(request, servletRequest, servletResponse);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "message", "登入成功",
+                "username", user.getUsername(),
+                "displayName", user.getDisplayName()
+        )));
     }
-
     @PostMapping("/logout")
-    public void logout() {
-        // TODO: 注入 HttpServletRequest/HttpSession 後執行登出並回傳 204 或成功回應。
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest servletRequest) {
+        authService.logout(servletRequest);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

@@ -1,9 +1,23 @@
 package com.kumistudy.auth;
 
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // TODO: Entity 補上 username、email 後，再建立 findByUsername 與 findByEmail。
-    // TODO: 查詢方法應該排除 deletedAt 不為 null 的帳號。
+    Optional<User> findByUsernameAndDeletedAtIsNull(String username);
+
+    Optional<User> findByEmailAndDeletedAtIsNull(String email);
+
+    boolean existsByUsernameAndDeletedAtIsNull(String username);
+
+    boolean existsByEmailAndDeletedAtIsNull(String email);
+
+    default boolean existsByUsername(String username) {
+        return existsByUsernameAndDeletedAtIsNull(username);
+    }
+
+    default boolean existsByEmail(String email) {
+        return existsByEmailAndDeletedAtIsNull(email);
+    }
 }
