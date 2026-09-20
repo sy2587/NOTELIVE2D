@@ -15,8 +15,14 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(
+                                "/api/auth/login", "/api/auth/register", "/api/auth/logout"))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/images/**", "/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login", "/api/auth/register",
+                                "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable());

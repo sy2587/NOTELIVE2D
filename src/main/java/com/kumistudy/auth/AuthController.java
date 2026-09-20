@@ -5,9 +5,12 @@ import com.kumistudy.auth.dto.RegisterRequest;
 import com.kumistudy.common.api.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +25,7 @@ public class AuthController {
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, String>>> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
@@ -42,6 +46,22 @@ public class AuthController {
                 "displayName", user.getDisplayName()
         )));
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<Map<String, String>>> currentUser(
+            Authentication authentication,
+            HttpServletRequest servletRequest) {
+        HttpSession session = servletRequest.getSession(false);
+        String displayName = session == null
+                ? authentication.getName()
+                : (String) session.getAttribute("loginDisplayName");
+
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "username", authentication.getName(),
+                "displayName", displayName == null ? authentication.getName() : displayName
+        )));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest servletRequest) {
         authService.logout(servletRequest);

@@ -2,8 +2,12 @@ target/
 .idea/
 *.iml
 .vscode/
+.agents/
 .env
 application-local.yml
 uploads/
 *.log
 .DS_Store
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local

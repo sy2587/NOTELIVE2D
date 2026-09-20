@@ -1,8 +1,8 @@
 # Kumi Study
 
-Kumi Study 是以 Java 21、Spring Boot 與 MySQL 建立的 Live2D 學習筆記平台。
+Kumi Study 是以 Vue 3、Java 21、Spring Boot 與 MySQL 建立的 Live2D 學習筆記平台。
 
-第一版採用 Spring Boot 同時提供 REST API 與原生 HTML/CSS/JavaScript 前端，登入驗證使用 Spring Security Session。React、JWT、AI、WebSocket 與進階學習功能會在 MVP 完成後評估。
+前後端分離：Vue 由 Vite 提供開發環境，Spring Boot 提供 REST API；登入驗證使用 Spring Security Session。
 
 ## 技術
 
@@ -12,7 +12,7 @@ Kumi Study 是以 Java 21、Spring Boot 與 MySQL 建立的 Live2D 學習筆記�
 - MySQL 8.4
 - Flyway
 - Maven
-- HTML / CSS / JavaScript / Fetch API
+- Vue 3 / Vue Router / Pinia / Vite
 
 ## 啟動 MySQL
 
@@ -20,7 +20,7 @@ Kumi Study 是以 Java 21、Spring Boot 與 MySQL 建立的 Live2D 學習筆記�
 docker compose up -d mysql
 ```
 
-## 啟動應用程式
+## 啟動後端
 
 需要設定以下環境變數，或使用 `application.yml` 的本機預設值：
 
@@ -31,14 +31,28 @@ DB_PASSWORD=change-me
 ```
 
 ```powershell
-mvnw.cmd spring-boot:run
+mvn spring-boot:run
+```
+
+後端位於 `http://localhost:8080`。
+
+## 啟動前端
+
+另開一個終端機：
+
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
 啟動後：
 
-- 網站：http://localhost:8080
+- 網站：http://localhost:5173
 - Swagger：http://localhost:8080/swagger-ui.html
 - OpenAPI：http://localhost:8080/api-docs
+
+開發期間 Vite 會把 `/api` 請求代理至 `http://localhost:8080`，不需要額外設定 CORS。
 
 ## 專案原則
 
@@ -81,7 +95,11 @@ src/main/java/com/kumistudy
 ├─ common       API 回應與例外處理
 └─ config       Spring Security 與 OpenAPI 設定
 
-src/main/resources/static
-├─ css          全站樣式
-└─ js           各頁面資料流與 Live2D 載入
+frontend/src
+├─ api          REST API client
+├─ assets       全站樣式
+├─ components   共用 Vue 元件
+├─ router       Vue Router 路由
+├─ stores       Pinia 狀態管理
+└─ views        首頁、登入與註冊頁
 ```
