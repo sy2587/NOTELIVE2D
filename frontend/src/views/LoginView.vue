@@ -11,7 +11,7 @@ const errors = reactive({}); const alert = ref(''); const loading = ref(false)
 
 async function submit() {
   Object.keys(errors).forEach(key => delete errors[key]); alert.value = ''; loading.value = true
-  try { await auth.login(form); router.push('/') }
+  try { await auth.login(form); router.push(route.query.redirect || '/dashboard') }
   catch (error) { alert.value = error.message; error.fieldErrors?.forEach(item => { errors[item.field] = item.message }) }
   finally { loading.value = false }
 }

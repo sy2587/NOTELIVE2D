@@ -1,9 +1,10 @@
 package com.kumistudy.note;
 
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NoteRepository extends JpaRepository<Note, Long> {
-
-    // TODO: 建立帶 ownerId 的列表、單筆、搜尋與分頁查詢。
-    // TODO: 搜尋條件包含 title/content、subject、tag、favorite 與日期範圍。
+    List<Note> findAllByOwnerIdAndDeletedAtIsNullOrderByPinnedDescUpdatedAtDesc(Long ownerId);
+    Optional<Note> findByIdAndOwnerIdAndDeletedAtIsNull(Long id, Long ownerId);
 }

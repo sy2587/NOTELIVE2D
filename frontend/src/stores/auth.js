@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { apiRequest } from '../api/client'
+import { apiRequest, clearCsrfToken } from '../api/client'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({ user: null, initialized: false }),
@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', {
       this.initialized = true
     },
     async login(credentials) {
+      clearCsrfToken()
       this.user = await apiRequest('/api/auth/login', {
         method: 'POST', body: JSON.stringify(credentials)
       })
@@ -23,6 +24,7 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       await apiRequest('/api/auth/logout', { method: 'POST' })
       this.user = null
+      clearCsrfToken()
     }
   }
 })

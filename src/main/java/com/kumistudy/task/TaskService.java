@@ -1,24 +1,60 @@
 package com.kumistudy.task;
 
+import com.kumistudy.auth.User;
+import com.kumistudy.auth.UserRepository;
+import com.kumistudy.common.api.ErrorCode;
+import com.kumistudy.common.exception.ApiException;
+import com.kumistudy.subject.Subject;
+import com.kumistudy.subject.SubjectRepository;
+import com.kumistudy.task.dto.TaskRequest;
+import com.kumistudy.task.dto.TaskResponse;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TaskService {
+    private final TaskRepository taskRepository;
+    private final SubjectRepository subjectRepository;
+    private final UserRepository userRepository;
 
-    // TODO: 注入 TaskRepository 與目前登入者元件。
-
-    @Transactional
-    public void create() {
-        // TODO: 驗證標題、截止日期與 priority，再建立屬於目前使用者的任務。
+    public TaskService(TaskRepository taskRepository, SubjectRepository subjectRepository, UserRepository userRepository) {
+        this.taskRepository = taskRepository;
+        this.subjectRepository = subjectRepository;
+        this.userRepository = userRepository;
     }
 
-    public void list() {
-        // TODO: 依 today、week、overdue 與 status 組合查詢條件。
+    @Transactional(readOnly = true)
+    public List<TaskResponse> list(Long ownerId, Long subjectId) {
+        requireSubject(ownerId, subjectId);
+        return taskRepository.findAllByOwnerIdAndSubject_IdAndDeletedAtIsNullOrderByCreatedAtAsc(ownerId, subjectId)
+                .stream().map(TaskResponse::from).toList();
     }
 
     @Transactional
-    public void complete() {
-        // TODO: 只允許 owner 完成任務，更新 status 與 completedAt。
+    public TaskResponse create(Long ownerId, Long subjectId, TaskRequest request) {
+        Subject subject = requireSubject(ownerId, subjectId);
+        User owner = userRepository.getReferenceById(ownerId);
+        return TaskResponse.from(taskRepository.save(new Task(owner, subject, request.title().trim())));
+    }
+
+    @Transactional
+    public TaskResponse toggle(Long ownerId, Long subjectId, Long taskId) {
+        Task task = taskRepository.findByIdAndOwnerIdAndSubject_IdAndDeletedAtIsNull(taskId, ownerId, subjectId)
+                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "找不到此待辦事項"));
+        task.toggleCompleted();
+        return TaskResponse.from(task);
+    }
+
+    @Transactional
+    public void delete(Long ownerId, Long subjectId, Long taskId) {
+        Task task = taskRepository.findByIdAndOwnerIdAndSubject_IdAndDeletedAtIsNull(taskId, ownerId, subjectId)
+                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "找不到此待辦事項"));
+        task.delete();
+    }
+
+    private Subject requireSubject(Long ownerId, Long subjectId) {
+        return subjectRepository.findByIdAndOwnerIdAndDeletedAtIsNull(subjectId, ownerId)
+                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "找不到此便利貼"));
     }
 }

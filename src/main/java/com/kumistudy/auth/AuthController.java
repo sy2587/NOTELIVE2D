@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -60,6 +61,14 @@ public class AuthController {
                 "username", authentication.getName(),
                 "displayName", displayName == null ? authentication.getName() : displayName
         )));
+    }
+
+    @GetMapping("/csrf")
+    public ApiResponse<Map<String, String>> csrf(CsrfToken csrfToken) {
+        return ApiResponse.success(Map.of(
+                "headerName", csrfToken.getHeaderName(),
+                "token", csrfToken.getToken()
+        ));
     }
 
     @PostMapping("/logout")
