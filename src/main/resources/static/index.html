@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Kumi Study 將筆記、科目與待辦事項整理在同一個安靜的學習空間。">
+    <meta name="theme-color" content="#12372f">
+    <title>Kumi Study｜讓學習回到自己的節奏</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<a class="skip-link" href="#main-content">跳至主要內容</a>
+<header class="site-header">
+    <a class="wordmark" href="/" aria-label="Kumi Study 首頁"><span class="wordmark-mark" aria-hidden="true">K</span><span>Kumi Study</span></a>
+    <nav class="site-nav" id="site-navigation" aria-label="主要導覽">
+        <a href="#features">功能</a><a href="#today">今日焦點</a><a href="#method">學習方法</a>
+        <a class="nav-login" href="/login.html">登入</a><a class="nav-action" href="/register.html">免費開始</a>
+    </nav>
+    <button class="menu-button" type="button" aria-label="開啟導覽選單" aria-controls="site-navigation" aria-expanded="false"><span></span><span></span></button>
+</header>
+
+<main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+            <p class="eyebrow"><span></span>專注學習，從容累積</p>
+            <h1 id="hero-title">把複雜的學習，<em>整理成自己的節奏。</em></h1>
+            <p class="hero-intro">筆記、科目與每日任務集中在一處。少一點切換與干擾，多一點真正理解和持續前進。</p>
+            <div class="hero-actions">
+                <a class="button button-primary" href="/register.html">建立學習空間 <span aria-hidden="true">→</span></a>
+                <a class="text-link" href="#features">看看如何運作 <span aria-hidden="true">↓</span></a>
+            </div>
+            <ul class="hero-proof" aria-label="產品特色摘要"><li>✓ 免費開始</li><li>✓ 無廣告干擾</li><li>✓ 適合各種科目</li></ul>
+        </div>
+        <div class="workspace-card" aria-label="Kumi Study 學習空間預覽">
+            <div class="card-topbar"><div><span class="mini-label">TODAY</span><strong>今天，專心做好三件事</strong></div><span class="avatar" aria-hidden="true">久</span></div>
+            <div class="focus-progress"><div><span>本週進度</span><strong>72%</strong></div><div class="progress-track" aria-hidden="true"><span></span></div></div>
+            <div class="preview-task is-done"><span class="check" aria-hidden="true">✓</span><div><strong>複習英文單字</strong><small>25 分鐘 · 語言</small></div><span class="task-time">09:00</span></div>
+            <div class="preview-task"><span class="check" aria-hidden="true"></span><div><strong>整理資料結構筆記</strong><small>45 分鐘 · 程式設計</small></div><span class="task-time">14:30</span></div>
+            <div class="preview-task"><span class="check" aria-hidden="true"></span><div><strong>完成數學練習</strong><small>30 分鐘 · 數學</small></div><span class="task-time">19:00</span></div>
+            <div class="quote-chip"><span aria-hidden="true">✦</span>今天的進步，也值得被看見。</div>
+        </div>
+    </section>
+
+    <section class="features" id="features" aria-labelledby="features-title">
+        <div class="section-heading"><p class="eyebrow eyebrow-light"><span></span>你的學習桌</p><h2 id="features-title">需要的工具剛剛好，<br>不讓功能喧賓奪主。</h2></div>
+        <div class="feature-grid">
+            <article class="feature-card"><span class="feature-number">01</span><svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h11a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3v-12Z"/><path d="M8 19.5a3 3 0 0 1 3-3h8M9 8h6M9 11.5h5"/></svg><h3>讓筆記更好找</h3><p>依科目和標籤整理內容，快速回到上次的思考，不再翻遍散落的檔案。</p></article>
+            <article class="feature-card"><span class="feature-number">02</span><svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/></svg><h3>把目標化成今天</h3><p>用清楚的小任務安排進度，完成一件、前進一步，維持可持續的節奏。</p></article>
+            <article class="feature-card"><span class="feature-number">03</span><svg class="feature-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9M12 19V5M19 19v-7M3 19h18"/></svg><h3>看見自己的累積</h3><p>用簡潔的進度回顧掌握學習狀態，把努力變成看得見的成長。</p></article>
+        </div>
+    </section>
+
+    <section class="today" id="today" aria-labelledby="today-title">
+        <div class="today-copy"><p class="eyebrow"><span></span>Today, in focus</p><h2 id="today-title">一次專心一件事，<em>就已經很好。</em></h2><p>清楚的優先順序，讓你不需要把力氣花在決定下一步。</p><a class="text-link" href="/register.html">開始安排今天 <span aria-hidden="true">→</span></a></div>
+        <ol class="task-list">
+            <li class="task-item"><span class="task-index">01</span><div><h3>複習課堂重點</h3><p>閱讀筆記 · 約 25 分鐘</p></div><span class="task-mark" aria-hidden="true">○</span></li>
+            <li class="task-item"><span class="task-index">02</span><div><h3>完成今日練習</h3><p>專注練習 · 約 30 分鐘</p></div><span class="task-mark" aria-hidden="true">○</span></li>
+            <li class="task-item"><span class="task-index">03</span><div><h3>整理一則新筆記</h3><p>回顧歸納 · 約 15 分鐘</p></div><span class="task-mark" aria-hidden="true">○</span></li>
+        </ol>
+    </section>
+
+    <section class="closing" id="method" aria-labelledby="closing-title"><p class="eyebrow eyebrow-light"><span></span>你的節奏，由你定義</p><h2 id="closing-title">今天寫下的每一頁，<br>都會成為明天的底氣。</h2><a class="button button-light" href="/register.html">免費建立帳號 <span aria-hidden="true">→</span></a></section>
+</main>
+
+<footer class="site-footer"><a class="wordmark footer-wordmark" href="/">Kumi Study</a><p>為專注與長期學習而設計。</p><span>© 2026 Kumi Study</span></footer>
+<script>
+    const menuButton = document.querySelector('.menu-button');
+    const navigation = document.querySelector('.site-nav');
+    menuButton?.addEventListener('click', () => {
+        const isOpen = menuButton.getAttribute('aria-expanded') === 'true';
+        menuButton.setAttribute('aria-expanded', String(!isOpen));
+        menuButton.setAttribute('aria-label', isOpen ? '開啟導覽選單' : '關閉導覽選單');
+        navigation.classList.toggle('is-open', !isOpen);
+    });
+    navigation?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+        menuButton?.setAttribute('aria-expanded', 'false');
+        menuButton?.setAttribute('aria-label', '開啟導覽選單');
+        navigation.classList.remove('is-open');
+    }));
+</script>
+</body>
+</html>
