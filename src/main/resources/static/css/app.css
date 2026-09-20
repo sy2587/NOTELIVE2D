@@ -7,12 +7,40 @@
 
 * { box-sizing: border-box; }
 
-body { margin: 0; min-height: 100vh; }
+html, body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: linear-gradient(180deg, #f7f2ea 0%, #f1efe8 100%);
+}
+
+img, canvas, svg, video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
 
 .page-shell {
+    position: relative;
+    z-index: 1;
+    isolation: isolate;
     width: min(720px, calc(100% - 40px));
     margin: 0 auto;
     padding: 18vh 0;
+}
+
+.photo-frame,
+.live2d-stage,
+.panel,
+.card {
+    position: relative;
+    z-index: 1;
+    overflow: visible;
 }
 
 .eyebrow {
@@ -26,3 +54,19 @@ body { margin: 0; min-height: 100vh; }
 
 h1 { margin: 0; font-size: clamp(2.2rem, 7vw, 4.8rem); line-height: 1.08; }
 .intro { max-width: 44rem; margin-top: 24px; color: #5f6b70; font-size: 1.1rem; line-height: 1.8; }
+
+/* 防止照片或 Live2D 畫布被上層元素遮住 */
+.photo-frame *,
+.live2d-stage *,
+.panel *,
+.card * {
+    position: relative;
+    z-index: 1;
+}
+
+.photo-frame,
+.live2d-stage,
+.panel,
+.card {
+    isolation: isolate;
+}
