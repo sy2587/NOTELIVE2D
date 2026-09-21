@@ -3,10 +3,12 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useSubjectStore } from '../stores/subjects'
+import { useDashboardStore } from '../stores/dashboard'
 import { primeCsrfToken } from '../api/client'
 
 const auth = useAuthStore()
-const notes = useSubjectStore()
+const subjects = useSubjectStore()
+const dashboard = useDashboardStore()
 const router = useRouter()
 const editorOpen = ref(false)
 const deleting = ref(null)
@@ -21,15 +23,15 @@ const colors = ['#E9F1D5', '#F8D7B7', '#CDE3E8', '#F2D8A7', '#DDD2E7', '#CBE4DB'
 onMounted(async () => {
   try {
     await primeCsrfToken()
-    await notes.fetchAll()
-    await Promise.all(notes.items.map(note => notes.fetchTasks(note.id)))
+    await Promise.all([subjects.fetchAll(), dashboard.fetch()])
+    await Promise.all(subjects.items.map(subject => subjects.fetchTasks(subject.id)))
   } catch (error) {
     if ([401, 403].includes(error.status)) router.push({ path: '/login', query: { redirect: '/dashboard' } })
   }
 })
 
 function openEditor(note) {
-  Object.assign(form, note ? { ...note, progress: 0 } : blank)
+  Object.assign(form, note ? { ...note } : blank)
   formError.value = ''
   editorOpen.value = true
 }
@@ -39,7 +41,7 @@ function noteTilt(id) {
 }
 
 function tasksFor(noteId) {
-  return notes.tasksByNote[noteId] || []
+  return subjects.tasksBySubject[noteId] || []
 }
 
 async function addTask(noteId) {
@@ -47,7 +49,8 @@ async function addTask(noteId) {
   if (!title) return
   taskError.value = ''
   try {
-    await notes.addTask(noteId, title)
+    await subjects.addTask(noteId, title)
+    await dashboard.fetch()
     taskDrafts[noteId] = ''
   } catch (error) {
     taskError.value = error.message
@@ -57,7 +60,8 @@ async function addTask(noteId) {
 async function toggleTask(noteId, taskId) {
   taskError.value = ''
   try {
-    await notes.toggleTask(noteId, taskId)
+    await subjects.toggleTask(noteId, taskId)
+    await dashboard.fetch()
   } catch (error) {
     taskError.value = error.message
   }
@@ -66,7 +70,8 @@ async function toggleTask(noteId, taskId) {
 async function removeTask(noteId, taskId) {
   taskError.value = ''
   try {
-    await notes.removeTask(noteId, taskId)
+    await subjects.removeTask(noteId, taskId)
+    await dashboard.fetch()
   } catch (error) {
     taskError.value = error.message
   }
@@ -76,7 +81,8 @@ async function save() {
   formError.value = ''
   saving.value = true
   try {
-    await notes.save({ ...form, progress: 0 })
+    await subjects.save({ ...form, progress: form.progress ?? 0 })
+    await dashboard.fetch()
     editorOpen.value = false
   } catch (error) {
     formError.value = error.fieldErrors?.[0]?.message || error.message
@@ -87,10 +93,11 @@ async function save() {
 
 async function remove() {
   try {
-    await notes.remove(deleting.value.id)
+    await subjects.remove(deleting.value.id)
+    await dashboard.fetch()
     deleting.value = null
   } catch (error) {
-    notes.error = error.message
+    subjects.error = error.message
   }
 }
 
@@ -119,14 +126,25 @@ async function logout() {
         <div><p class="eyebrow"><span></span>My note wall</p><h1>我的便利貼</h1><p>把靈感、待辦和學習提醒貼在這裡，隨時回來接著前進。</p></div>
         <button class="button button-primary" type="button" @click="openEditor()">新增便利貼 ＋</button>
       </header>
-      <div v-if="notes.error" class="dashboard-alert" role="alert">{{ notes.error }} <button type="button" @click="notes.fetchAll()">重試</button></div>
-      <div v-if="notes.loading" class="note-grid"><div v-for="i in 3" :key="i" class="sticky-note skeleton"></div></div>
-      <section v-else-if="notes.items?.length" class="note-grid" aria-label="便利貼列表">
-        <article v-for="note in notes.items" :key="note.id" class="sticky-note" :style="{ '--note-color': note.color || '#E9F1D5', '--note-tilt': noteTilt(note.id) }">
+      <section class="dashboard-summary" aria-label="學習摘要" :aria-busy="dashboard.loading">
+        <article><span>科目</span><strong>{{ dashboard.summary?.subjectCount ?? '—' }}</strong></article>
+        <article><span>學習筆記</span><strong>{{ dashboard.summary?.noteCount ?? '—' }}</strong></article>
+        <article><span>待完成任務</span><strong>{{ dashboard.summary?.pendingTaskCount ?? '—' }}</strong></article>
+      </section>
+      <section v-if="dashboard.summary" class="dashboard-recent" aria-label="最近學習動態">
+        <article><div class="recent-heading"><h2>最近筆記</h2><RouterLink to="/notes">查看全部</RouterLink></div><ul v-if="dashboard.summary.recentNotes?.length"><li v-for="note in dashboard.summary.recentNotes" :key="note.id"><strong>{{ note.title }}</strong><span>{{ new Date(note.updatedAt).toLocaleDateString('zh-TW') }}</span></li></ul><p v-else>目前還沒有學習筆記。</p></article>
+        <article><div class="recent-heading"><h2>待完成任務</h2></div><ul v-if="dashboard.summary.pendingTasks?.length"><li v-for="task in dashboard.summary.pendingTasks" :key="task.id"><strong>{{ task.title }}</strong><span>待完成</span></li></ul><p v-else>目前沒有待完成任務。</p></article>
+      </section>
+      <div v-if="dashboard.error" class="dashboard-alert" role="alert">{{ dashboard.error }} <button type="button" @click="dashboard.fetch()">重新載入摘要</button></div>
+      <div v-if="subjects.error" class="dashboard-alert" role="alert">{{ subjects.error }} <button type="button" @click="subjects.fetchAll()">重試</button></div>
+      <div v-if="subjects.loading" class="note-grid"><div v-for="i in 3" :key="i" class="sticky-note skeleton"></div></div>
+      <section v-else-if="subjects.items?.length" class="note-grid" aria-label="便利貼列表">
+        <article v-for="note in subjects.items" :key="note.id" class="sticky-note" :style="{ '--note-color': note.color || '#E9F1D5', '--note-tilt': noteTilt(note.id) }">
           <div class="note-actions"><span v-if="note.studyGoal" class="note-reminder">{{ note.studyGoal }}</span><div><button type="button" @click="openEditor(note)">編輯</button><button class="danger-link" type="button" @click="deleting = note">刪除</button></div></div>
           <h2>{{ note.name }}</h2>
           <p v-if="note.description" class="note-content">{{ note.description }}</p>
           <p v-else class="note-placeholder">寫下想記住的事…</p>
+          <div class="subject-progress" :aria-label="`學習進度 ${note.progress}%`"><span>學習進度</span><strong>{{ note.progress }}%</strong><div><i :style="{ width: `${note.progress}%` }"></i></div></div>
           <div class="note-tasks">
             <p class="task-heading">待辦事項 <span>{{ tasksFor(note.id).filter(task => task.completed).length }} / {{ tasksFor(note.id).length }}</span></p>
             <ul v-if="tasksFor(note.id).length" class="task-list" aria-label="待辦事項">
@@ -151,6 +169,7 @@ async function logout() {
           <label>標題<input v-model.trim="form.name" required maxlength="150" autofocus placeholder="例如：下週要完成的事"></label>
           <fieldset><legend>便利貼顏色</legend><div class="color-options"><label v-for="color in colors" :key="color"><input v-model="form.color" type="radio" name="color" :value="color"><span :style="{ background: color }"></span></label></div></fieldset>
           <label>提醒事項 <span class="field-hint">選填</span><input v-model.trim="form.studyGoal" maxlength="100" placeholder="例如：週五前完成"></label>
+          <label>學習進度 <output>{{ form.progress }}%</output><input v-model.number="form.progress" type="range" min="0" max="100" step="5"></label>
           <label>內容<textarea v-model.trim="form.description" maxlength="255" placeholder="寫下詳細內容、靈感或待辦事項…"></textarea></label>
           <p v-if="formError" class="form-alert" role="alert">{{ formError }}</p>
           <div class="modal-actions"><button class="button secondary-button" type="button" @click="editorOpen = false">取消</button><button class="button button-primary" type="submit" :disabled="saving">{{ saving ? '儲存中…' : '儲存便利貼' }}</button></div>

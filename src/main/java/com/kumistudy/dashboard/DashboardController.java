@@ -1,5 +1,8 @@
 package com.kumistudy.dashboard;
 
+import com.kumistudy.auth.CurrentUserService;
+import com.kumistudy.common.api.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,13 +12,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final CurrentUserService currentUserService;
 
-    public DashboardController(DashboardService dashboardService) {
+    public DashboardController(DashboardService dashboardService, CurrentUserService currentUserService) {
         this.dashboardService = dashboardService;
+        this.currentUserService = currentUserService;
     }
 
     @GetMapping
-    public void getDashboard() {
-        // TODO: 回傳 DashboardResponse，並統一使用 ApiResponse 包裝。
+    public ApiResponse<DashboardResponse> getDashboard(HttpServletRequest request) {
+        return ApiResponse.success(dashboardService.getDashboard(currentUserService.requireUserId(request)));
     }
 }

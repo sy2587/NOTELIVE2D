@@ -1,0 +1,22 @@
+import { Mark, mergeAttributes } from '@tiptap/core'
+
+export const FontSize = Mark.create({
+  name: 'fontSize',
+  addAttributes() {
+    return {
+      size: {
+        default: null,
+        parseHTML: element => element.style.fontSize || null,
+        renderHTML: attributes => attributes.size ? { style: `font-size: ${attributes.size}` } : {}
+      }
+    }
+  },
+  parseHTML() { return [{ tag: 'span[style*="font-size"]' }] },
+  renderHTML({ HTMLAttributes }) { return ['span', mergeAttributes(HTMLAttributes), 0] },
+  addCommands() {
+    return {
+      setFontSize: size => ({ commands }) => commands.setMark(this.name, { size }),
+      unsetFontSize: () => ({ commands }) => commands.unsetMark(this.name)
+    }
+  }
+})

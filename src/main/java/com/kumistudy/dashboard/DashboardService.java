@@ -1,12 +1,35 @@
 package com.kumistudy.dashboard;
 
+import com.kumistudy.note.NoteRepository;
+import com.kumistudy.note.dto.NoteResponse;
+import com.kumistudy.subject.SubjectRepository;
+import com.kumistudy.task.TaskRepository;
+import com.kumistudy.task.dto.TaskResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DashboardService {
+    private final SubjectRepository subjectRepository;
+    private final NoteRepository noteRepository;
+    private final TaskRepository taskRepository;
 
-    public void getDashboard() {
-        // TODO: 組合今日待辦、最近筆記、即將到期任務與統計摘要。
-        // TODO: 優先呼叫各功能的 service，避免 Dashboard 直接操作多個 Repository。
+    public DashboardService(SubjectRepository subjectRepository, NoteRepository noteRepository, TaskRepository taskRepository) {
+        this.subjectRepository = subjectRepository;
+        this.noteRepository = noteRepository;
+        this.taskRepository = taskRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardResponse getDashboard(Long ownerId) {
+        return new DashboardResponse(
+                subjectRepository.countByOwnerIdAndDeletedAtIsNull(ownerId),
+                noteRepository.countByOwnerIdAndDeletedAtIsNull(ownerId),
+                taskRepository.countByOwnerIdAndStatusAndDeletedAtIsNullAndSubject_DeletedAtIsNull(ownerId, "PENDING"),
+                noteRepository.findTop5ByOwnerIdAndDeletedAtIsNullOrderByUpdatedAtDesc(ownerId)
+                        .stream().map(NoteResponse::from).toList(),
+                taskRepository.findTop5ByOwnerIdAndStatusAndDeletedAtIsNullAndSubject_DeletedAtIsNullOrderByCreatedAtDesc(ownerId, "PENDING")
+                        .stream().map(TaskResponse::from).toList()
+        );
     }
 }

@@ -1,0 +1,53 @@
+package com.kumistudy.note;
+
+import com.kumistudy.auth.CurrentUserService;
+import com.kumistudy.config.SecurityConfig;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(NoteController.class)
+@Import(SecurityConfig.class)
+class NoteControllerTest {
+    @Autowired MockMvc mockMvc;
+    @MockBean NoteService noteService;
+    @MockBean CurrentUserService currentUserService;
+
+    @Test
+    void list_shouldUseCurrentSessionOwner() throws Exception {
+        when(currentUserService.requireUserId(any(HttpServletRequest.class))).thenReturn(7L);
+        when(noteService.list(7L)).thenReturn(java.util.List.of());
+        mockMvc.perform(get("/api/notes").with(user("alice")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true));
+        verify(noteService).list(7L);
+    }
+
+    @Test
+    void create_shouldRequireCsrfToken() throws Exception {
+        mockMvc.perform(post("/api/notes").with(user("alice"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"T\",\"content\":\"C\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void create_shouldValidateRequest() throws Exception {
+        mockMvc.perform(post("/api/notes").with(user("alice")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"\",\"content\":\"\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+}

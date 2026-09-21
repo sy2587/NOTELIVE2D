@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { apiRequest } from '../api/client'
 
 export const useSubjectStore = defineStore('subjects', {
-  state: () => ({ items: [], tasksByNote: {}, loading: false, error: '' }),
+  state: () => ({ items: [], tasksBySubject: {}, loading: false, error: '' }),
   actions: {
     async fetchAll() {
       this.loading = true; this.error = ''
@@ -22,24 +22,24 @@ export const useSubjectStore = defineStore('subjects', {
     async remove(id) {
       await apiRequest(`/api/subjects/${id}`, { method: 'DELETE' })
       this.items = Array.isArray(this.items) ? this.items.filter(item => item.id !== id) : []
-      delete this.tasksByNote[id]
+      delete this.tasksBySubject[id]
     },
-    async fetchTasks(noteId) {
-      const tasks = await apiRequest(`/api/subjects/${noteId}/tasks`)
-      this.tasksByNote[noteId] = Array.isArray(tasks) ? tasks : []
+    async fetchTasks(subjectId) {
+      const tasks = await apiRequest(`/api/subjects/${subjectId}/tasks`)
+      this.tasksBySubject[subjectId] = Array.isArray(tasks) ? tasks : []
     },
-    async addTask(noteId, title) {
-      const task = await apiRequest(`/api/subjects/${noteId}/tasks`, { method: 'POST', body: JSON.stringify({ title }) })
-      const tasks = this.tasksByNote[noteId] || []
-      this.tasksByNote[noteId] = [...tasks, task]
+    async addTask(subjectId, title) {
+      const task = await apiRequest(`/api/subjects/${subjectId}/tasks`, { method: 'POST', body: JSON.stringify({ title }) })
+      const tasks = this.tasksBySubject[subjectId] || []
+      this.tasksBySubject[subjectId] = [...tasks, task]
     },
-    async toggleTask(noteId, taskId) {
-      const updated = await apiRequest(`/api/subjects/${noteId}/tasks/${taskId}/toggle`, { method: 'POST' })
-      this.tasksByNote[noteId] = (this.tasksByNote[noteId] || []).map(task => task.id === taskId ? updated : task)
+    async toggleTask(subjectId, taskId) {
+      const updated = await apiRequest(`/api/subjects/${subjectId}/tasks/${taskId}/toggle`, { method: 'POST' })
+      this.tasksBySubject[subjectId] = (this.tasksBySubject[subjectId] || []).map(task => task.id === taskId ? updated : task)
     },
-    async removeTask(noteId, taskId) {
-      await apiRequest(`/api/subjects/${noteId}/tasks/${taskId}`, { method: 'DELETE' })
-      this.tasksByNote[noteId] = (this.tasksByNote[noteId] || []).filter(task => task.id !== taskId)
+    async removeTask(subjectId, taskId) {
+      await apiRequest(`/api/subjects/${subjectId}/tasks/${taskId}`, { method: 'DELETE' })
+      this.tasksBySubject[subjectId] = (this.tasksBySubject[subjectId] || []).filter(task => task.id !== taskId)
     }
   }
 })

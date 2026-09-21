@@ -1,0 +1,2 @@
+ALTER TABLE tasks
+    MODIFY COLUMN subject_id BIGINT NOT NULL;

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
     List<Subject> findAllByOwnerIdAndDeletedAtIsNullOrderByUpdatedAtDesc(Long ownerId);
+    long countByOwnerIdAndDeletedAtIsNull(Long ownerId);
 
     Optional<Subject> findByIdAndOwnerIdAndDeletedAtIsNull(Long id, Long ownerId);
 

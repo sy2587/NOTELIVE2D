@@ -4,6 +4,9 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { FontSize } from '../extensions/FontSize'
+import { TextColor } from '../extensions/TextColor'
+import { Highlight } from '../extensions/Highlight'
 
 const props = defineProps({ modelValue: { type: String, default: '' } })
 const emit = defineEmits(['update:modelValue'])
@@ -15,6 +18,9 @@ const editor = useEditor({
     StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
     TaskList,
     TaskItem.configure({ nested: true }),
+    FontSize,
+    TextColor,
+    Highlight,
     Placeholder.configure({ placeholder: '用自己的話記錄理解、範例與待複習的問題…' })
   ],
   editorProps: { attributes: { class: 'tiptap-editor-content' } },
@@ -29,6 +35,13 @@ onBeforeUnmount(() => editor.value?.destroy())
 function run(command) { command(); blockMenuOpen.value = false }
 function heading(level) { run(() => editor.value.chain().focus().toggleHeading({ level }).run()) }
 function isActive(name, attributes) { return editor.value?.isActive(name, attributes) }
+function setFontSize(event) {
+  const size = event.target.value
+  if (size) editor.value.chain().focus().setFontSize(size).run()
+  else editor.value.chain().focus().unsetFontSize().run()
+}
+function setTextColor(event) { editor.value.chain().focus().setTextColor(event.target.value).run() }
+function setHighlight(event) { editor.value.chain().focus().setHighlight(event.target.value).run() }
 </script>
 
 <template>
@@ -49,6 +62,12 @@ function isActive(name, attributes) { return editor.value?.isActive(name, attrib
       <button type="button" class="rich-tool rich-mark" :class="{ active: isActive('bold') }" aria-label="粗體" :aria-pressed="isActive('bold')" @click="editor.chain().focus().toggleBold().run()">B</button>
       <button type="button" class="rich-tool rich-mark italic" :class="{ active: isActive('italic') }" aria-label="斜體" :aria-pressed="isActive('italic')" @click="editor.chain().focus().toggleItalic().run()">I</button>
       <button type="button" class="rich-tool rich-mark strike" :class="{ active: isActive('strike') }" aria-label="刪除線" :aria-pressed="isActive('strike')" @click="editor.chain().focus().toggleStrike().run()">S</button>
+      <span class="toolbar-divider" aria-hidden="true"></span>
+      <label class="font-size-tool"><span class="sr-only">字體大小</span><select aria-label="字體大小" @change="setFontSize"><option value="">16</option><option value="12px">12</option><option value="14px">14</option><option value="18px">18</option><option value="20px">20</option><option value="24px">24</option><option value="28px">28</option><option value="32px">32</option></select></label>
+      <span class="color-tool-group"><label class="color-tool text-color-tool" title="選擇文字顏色"><span>字色</span><input type="color" value="#173630" aria-label="選擇文字顏色" @input="setTextColor"></label><button type="button" class="color-reset" aria-label="清除文字顏色" @click="editor.chain().focus().unsetTextColor().run()"><span aria-hidden="true">↺</span> 清除</button></span>
+      <span class="color-tool-group"><label class="color-tool highlight-tool" title="選擇螢光筆顏色"><span>螢光</span><input type="color" value="#ffe58f" aria-label="選擇螢光筆顏色" @input="setHighlight"></label><button type="button" class="color-reset" aria-label="清除螢光標記" @click="editor.chain().focus().unsetHighlight().run()"><span aria-hidden="true">↺</span> 清除</button></span>
+      <button type="button" class="rich-tool code-tool" :class="{ active: isActive('code') }" aria-label="行內程式碼" :aria-pressed="isActive('code')" @click="editor.chain().focus().toggleCode().run()">&lt;/&gt;</button>
+      <button type="button" class="rich-tool code-tool" :class="{ active: isActive('codeBlock') }" aria-label="程式碼區塊" :aria-pressed="isActive('codeBlock')" @click="editor.chain().focus().toggleCodeBlock().run()">{ }</button>
       <span class="toolbar-divider" aria-hidden="true"></span>
       <button type="button" class="rich-tool" aria-label="復原" :disabled="!editor?.can().undo()" @click="editor.chain().focus().undo().run()">↶</button>
       <button type="button" class="rich-tool" aria-label="重做" :disabled="!editor?.can().redo()" @click="editor.chain().focus().redo().run()">↷</button>
