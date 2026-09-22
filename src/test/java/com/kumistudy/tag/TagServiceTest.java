@@ -43,6 +43,27 @@ class TagServiceTest {
     }
 
     @Test
+    void update_shouldTrimNameForOwnedTag() {
+        TagService service = new TagService(tagRepository, userRepository);
+        Tag tag = new Tag(new User("alice", "a@example.com", "hash", "Alice"), "Java");
+        when(tagRepository.findByIdAndOwnerId(3L, 7L)).thenReturn(Optional.of(tag));
+
+        assertEquals("Spring", service.update(7L, 3L, new TagRequest("  Spring  ")).name());
+        verify(tagRepository).existsByOwnerIdAndNameIgnoreCaseAndIdNot(7L, "Spring", 3L);
+    }
+
+    @Test
+    void update_shouldRejectTagOwnedByAnotherUser() {
+        TagService service = new TagService(tagRepository, userRepository);
+        when(tagRepository.findByIdAndOwnerId(3L, 7L)).thenReturn(Optional.empty());
+
+        ApiException exception = assertThrows(ApiException.class,
+                () -> service.update(7L, 3L, new TagRequest("Spring")));
+
+        assertEquals(ErrorCode.RESOURCE_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
     void delete_shouldClearNoteLinksBeforeDeletingTag() {
         TagService service = new TagService(tagRepository, userRepository);
         Tag tag = new Tag(new User("alice", "a@example.com", "hash", "Alice"), "Java");

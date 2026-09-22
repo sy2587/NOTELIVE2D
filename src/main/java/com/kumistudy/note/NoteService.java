@@ -7,6 +7,7 @@ import com.kumistudy.common.exception.ApiException;
 import com.kumistudy.folder.Folder;
 import com.kumistudy.folder.FolderRepository;
 import com.kumistudy.note.dto.NoteRequest;
+import com.kumistudy.note.dto.NotePageResponse;
 import com.kumistudy.note.dto.NoteResponse;
 import com.kumistudy.tag.Tag;
 import com.kumistudy.tag.TagRepository;
@@ -14,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -38,6 +40,17 @@ public class NoteService {
 
     @Transactional(readOnly = true)
     public NoteResponse get(Long ownerId, Long id) { return NoteResponse.from(requireOwned(ownerId, id)); }
+
+    @Transactional(readOnly = true)
+    public NotePageResponse search(Long ownerId, String query, Long folderId, Long tagId,
+                                   Boolean favorite, int page, int size) {
+        String normalizedQuery = query == null || query.isBlank() ? null : query.trim();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        return NotePageResponse.from(noteRepository
+                .search(ownerId, normalizedQuery, folderId, tagId, favorite, PageRequest.of(safePage, safeSize))
+                .map(NoteResponse::from));
+    }
 
     @Transactional
     public NoteResponse create(Long ownerId, NoteRequest request) {

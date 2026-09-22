@@ -4,6 +4,7 @@ import com.kumistudy.note.NoteRepository;
 import com.kumistudy.subject.SubjectRepository;
 import com.kumistudy.task.TaskRepository;
 import java.util.List;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,7 +26,10 @@ class DashboardServiceTest {
         when(subjectRepository.countByOwnerIdAndDeletedAtIsNull(7L)).thenReturn(2L);
         when(noteRepository.countByOwnerIdAndDeletedAtIsNull(7L)).thenReturn(4L);
         when(taskRepository.countByOwnerIdAndStatusAndDeletedAtIsNullAndSubject_DeletedAtIsNull(7L, "PENDING")).thenReturn(3L);
+        when(taskRepository.countByOwnerIdAndStatusAndDueDateAndDeletedAtIsNullAndSubject_DeletedAtIsNull(7L, "PENDING", LocalDate.now())).thenReturn(1L);
+        when(taskRepository.countByOwnerIdAndStatusAndDueDateBeforeAndDeletedAtIsNullAndSubject_DeletedAtIsNull(7L, "PENDING", LocalDate.now())).thenReturn(2L);
         when(noteRepository.findTop5ByOwnerIdAndDeletedAtIsNullOrderByUpdatedAtDesc(7L)).thenReturn(List.of());
+        when(taskRepository.findAllByOwnerIdAndStatusAndDueDateAndDeletedAtIsNullAndSubject_DeletedAtIsNullOrderByCreatedAtAsc(7L, "PENDING", LocalDate.now())).thenReturn(List.of());
         when(taskRepository.findTop5ByOwnerIdAndStatusAndDeletedAtIsNullAndSubject_DeletedAtIsNullOrderByCreatedAtDesc(7L, "PENDING")).thenReturn(List.of());
 
         DashboardResponse result = service.getDashboard(7L);
@@ -33,6 +37,8 @@ class DashboardServiceTest {
         assertEquals(2L, result.subjectCount());
         assertEquals(4L, result.noteCount());
         assertEquals(3L, result.pendingTaskCount());
+        assertEquals(1L, result.todayTaskCount());
+        assertEquals(2L, result.overdueTaskCount());
         verify(noteRepository).findTop5ByOwnerIdAndDeletedAtIsNullOrderByUpdatedAtDesc(7L);
     }
 }

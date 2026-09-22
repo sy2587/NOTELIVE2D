@@ -15,6 +15,11 @@ export const useFolderStore = defineStore('folders', {
       this.items = [...this.items, saved].sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
       return saved
     },
+    async update(id, name) {
+      const saved = await apiRequest(`/api/folders/${id}`, { method: 'PUT', body: JSON.stringify({ name }) })
+      this.items = this.items.map(folder => folder.id === id ? saved : folder).sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
+      return saved
+    },
     async remove(id) {
       await apiRequest(`/api/folders/${id}`, { method: 'DELETE' })
       this.items = this.items.filter(folder => folder.id !== id)

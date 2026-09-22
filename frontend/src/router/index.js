@@ -13,7 +13,8 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/register', name: 'register', component: RegisterView, meta: { guestOnly: true } },
     { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } },
-    { path: '/notes', name: 'notes', component: () => import('../views/NotesView.vue'), meta: { requiresAuth: true } }
+    { path: '/notes', name: 'notes', component: () => import('../views/NotesView.vue'), meta: { requiresAuth: true } },
+    { path: '/tasks', name: 'tasks', component: () => import('../views/TasksView.vue'), meta: { requiresAuth: true } }
   ]
 })
 

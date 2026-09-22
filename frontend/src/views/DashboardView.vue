@@ -11,6 +11,7 @@ const subjects = useSubjectStore()
 const dashboard = useDashboardStore()
 const router = useRouter()
 const editorOpen = ref(false)
+const activePanel = ref('notes')
 const deleting = ref(null)
 const saving = ref(false)
 const formError = ref('')
@@ -44,14 +45,27 @@ function tasksFor(noteId) {
   return subjects.tasksBySubject[noteId] || []
 }
 
+function taskDraft(noteId) {
+  if (!taskDrafts[noteId]) taskDrafts[noteId] = { title: '', priority: 'MEDIUM', dueDate: '' }
+  return taskDrafts[noteId]
+}
+
+function taskDueLabel(task) {
+  if (!task.dueDate) return ''
+  if (task.overdue) return `已逾期 · ${task.dueDate}`
+  if (task.dueToday) return '今天到期'
+  return task.dueDate
+}
+
 async function addTask(noteId) {
-  const title = taskDrafts[noteId]?.trim()
+  const draft = taskDraft(noteId)
+  const title = draft.title.trim()
   if (!title) return
   taskError.value = ''
   try {
-    await subjects.addTask(noteId, title)
+    await subjects.addTask(noteId, { title, priority: draft.priority, dueDate: draft.dueDate || null })
     await dashboard.fetch()
-    taskDrafts[noteId] = ''
+    taskDrafts[noteId] = { title: '', priority: 'MEDIUM', dueDate: '' }
   } catch (error) {
     taskError.value = error.message
   }
@@ -67,7 +81,30 @@ async function toggleTask(noteId, taskId) {
   }
 }
 
-async function removeTask(noteId, taskId) {
+async function editTask(noteId, task) {
+  const title = window.prompt('修改待辦事項', task.title)?.trim()
+  if (!title) return
+  const priorityInput = window.prompt('優先級：LOW、MEDIUM 或 HIGH', task.priority || 'MEDIUM')?.trim().toUpperCase()
+  if (priorityInput == null) return
+  if (!['LOW', 'MEDIUM', 'HIGH'].includes(priorityInput)) {
+    taskError.value = '優先級必須是 LOW、MEDIUM 或 HIGH'
+    return
+  }
+  const dueDate = window.prompt('到期日（YYYY-MM-DD，留空表示不設定）', task.dueDate || '')
+  if (dueDate == null) return
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    taskError.value = '到期日格式必須是 YYYY-MM-DD'
+    return
+  }
+  taskError.value = ''
+  try {
+    await subjects.updateTask(noteId, task.id, { title, description: task.description, priority: priorityInput, dueDate: dueDate || null })
+    await dashboard.fetch()
+  } catch (error) { taskError.value = error.fieldErrors?.[0]?.message || error.message }
+}
+
+async function removeTask(noteId, taskId, taskTitle = '') {
+  if (!window.confirm(`確定刪除${taskTitle ? `「${taskTitle}」` : '這項待辦事項'}？刪除後無法復原。`)) return
   taskError.value = ''
   try {
     await subjects.removeTask(noteId, taskId)
@@ -116,29 +153,44 @@ async function logout() {
           <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
           我的便利貼
         </RouterLink>
-        <RouterLink to="/notes">學習筆記</RouterLink>
+        <RouterLink to="/notes"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>學習筆記</RouterLink>
+        <RouterLink to="/tasks"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 2.3 2.3L16 8.7"/></svg>任務管理</RouterLink>
       </nav>
       <div class="sidebar-user"><span class="avatar">{{ auth.user?.displayName?.slice(0, 1) }}</span><div><strong>{{ auth.user?.displayName }}</strong><small>@{{ auth.user?.username }}</small></div><button type="button" aria-label="登出" @click="logout">↗</button></div>
     </aside>
 
     <main class="dashboard-main">
+      <div class="dashboard-content">
       <header class="dashboard-header">
-        <div><p class="eyebrow"><span></span>My note wall</p><h1>我的便利貼</h1><p>把靈感、待辦和學習提醒貼在這裡，隨時回來接著前進。</p></div>
-        <button class="button button-primary" type="button" @click="openEditor()">新增便利貼 ＋</button>
+        <div><p class="eyebrow"><span></span>{{ activePanel === 'notes' ? 'My note wall' : 'Study overview' }}</p><h1>{{ activePanel === 'notes' ? '我的便利貼' : '學習總覽' }}</h1><p>{{ activePanel === 'notes' ? '把靈感、待辦和學習提醒貼在這裡，隨時回來接著前進。' : '快速查看筆記、今日任務與待完成事項。' }}</p></div>
+        <button v-if="activePanel === 'notes'" class="button button-primary" type="button" @click="openEditor()">新增便利貼 ＋</button>
       </header>
-      <section class="dashboard-summary" aria-label="學習摘要" :aria-busy="dashboard.loading">
-        <article><span>科目</span><strong>{{ dashboard.summary?.subjectCount ?? '—' }}</strong></article>
-        <article><span>學習筆記</span><strong>{{ dashboard.summary?.noteCount ?? '—' }}</strong></article>
-        <article><span>待完成任務</span><strong>{{ dashboard.summary?.pendingTaskCount ?? '—' }}</strong></article>
-      </section>
-      <section v-if="dashboard.summary" class="dashboard-recent" aria-label="最近學習動態">
-        <article><div class="recent-heading"><h2>最近筆記</h2><RouterLink to="/notes">查看全部</RouterLink></div><ul v-if="dashboard.summary.recentNotes?.length"><li v-for="note in dashboard.summary.recentNotes" :key="note.id"><strong>{{ note.title }}</strong><span>{{ new Date(note.updatedAt).toLocaleDateString('zh-TW') }}</span></li></ul><p v-else>目前還沒有學習筆記。</p></article>
-        <article><div class="recent-heading"><h2>待完成任務</h2></div><ul v-if="dashboard.summary.pendingTasks?.length"><li v-for="task in dashboard.summary.pendingTasks" :key="task.id"><strong>{{ task.title }}</strong><span>待完成</span></li></ul><p v-else>目前沒有待完成任務。</p></article>
-      </section>
-      <div v-if="dashboard.error" class="dashboard-alert" role="alert">{{ dashboard.error }} <button type="button" @click="dashboard.fetch()">重新載入摘要</button></div>
-      <div v-if="subjects.error" class="dashboard-alert" role="alert">{{ subjects.error }} <button type="button" @click="subjects.fetchAll()">重試</button></div>
-      <div v-if="subjects.loading" class="note-grid"><div v-for="i in 3" :key="i" class="sticky-note skeleton"></div></div>
-      <section v-else-if="subjects.items?.length" class="note-grid" aria-label="便利貼列表">
+      <div class="dashboard-tabs" role="tablist" aria-label="便利貼與學習總覽">
+        <button id="notes-tab" type="button" role="tab" :class="{ active: activePanel === 'notes' }" :aria-selected="activePanel === 'notes'" aria-controls="notes-panel" @click="activePanel = 'notes'">便利貼</button>
+        <button id="overview-tab" type="button" role="tab" :class="{ active: activePanel === 'overview' }" :aria-selected="activePanel === 'overview'" aria-controls="overview-panel" @click="activePanel = 'overview'">總覽</button>
+      </div>
+
+      <div v-if="activePanel === 'overview'" id="overview-panel" role="tabpanel" aria-labelledby="overview-tab">
+        <section class="dashboard-summary" aria-label="學習摘要" :aria-busy="dashboard.loading">
+          <article><span>科目</span><strong>{{ dashboard.summary?.subjectCount ?? '—' }}</strong></article>
+          <article><span>學習筆記</span><strong>{{ dashboard.summary?.noteCount ?? '—' }}</strong></article>
+          <article><span>待完成任務</span><strong>{{ dashboard.summary?.pendingTaskCount ?? '—' }}</strong></article>
+          <article class="today-summary"><span>今天到期</span><strong>{{ dashboard.summary?.todayTaskCount ?? '—' }}</strong></article>
+          <article :class="{ 'overdue-summary': dashboard.summary?.overdueTaskCount > 0 }"><span>已逾期</span><strong>{{ dashboard.summary?.overdueTaskCount ?? '—' }}</strong></article>
+        </section>
+        <section v-if="dashboard.summary" class="dashboard-recent" aria-label="最近學習動態">
+          <article><div class="recent-heading"><h2>最近筆記</h2><RouterLink to="/notes">查看全部</RouterLink></div><ul v-if="dashboard.summary.recentNotes?.length" class="overview-note-list"><li v-for="note in dashboard.summary.recentNotes" :key="note.id"><RouterLink :to="{ name: 'notes', query: { note: note.id } }"><strong>{{ note.title }}</strong><span>{{ new Date(note.updatedAt).toLocaleDateString('zh-TW') }}</span></RouterLink></li></ul><p v-else>目前還沒有學習筆記。</p></article>
+          <article><div class="recent-heading"><h2>今日任務</h2></div><ul v-if="dashboard.summary.todayTasks?.length" class="overview-task-list"><li v-for="task in dashboard.summary.todayTasks" :key="task.id"><button type="button" class="overview-task-check" :aria-label="`完成「${task.title}」`" @click="toggleTask(task.subjectId, task.id)">✓</button><span class="overview-task-copy"><strong>{{ task.title }}</strong><small>{{ task.priority === 'HIGH' ? '高優先' : task.priority === 'LOW' ? '低優先' : '中優先' }}</small></span><span class="overview-row-actions"><button type="button" :aria-label="`編輯「${task.title}」`" @click="editTask(task.subjectId, task)">編輯</button><button type="button" class="danger-link" :aria-label="`刪除「${task.title}」`" @click="removeTask(task.subjectId, task.id, task.title)">刪除</button></span></li></ul><p v-else>今天沒有到期任務。</p></article>
+          <article><div class="recent-heading"><h2>待完成任務</h2></div><ul v-if="dashboard.summary.pendingTasks?.length" class="overview-task-list"><li v-for="task in dashboard.summary.pendingTasks" :key="task.id"><button type="button" class="overview-task-check" :aria-label="`完成「${task.title}」`" @click="toggleTask(task.subjectId, task.id)">✓</button><span class="overview-task-copy"><strong>{{ task.title }}</strong><small :class="{ 'overdue-text': task.overdue }">{{ taskDueLabel(task) || '待完成' }}</small></span><span class="overview-row-actions"><button type="button" :aria-label="`編輯「${task.title}」`" @click="editTask(task.subjectId, task)">編輯</button><button type="button" class="danger-link" :aria-label="`刪除「${task.title}」`" @click="removeTask(task.subjectId, task.id, task.title)">刪除</button></span></li></ul><p v-else>目前沒有待完成任務。</p></article>
+        </section>
+        <div v-if="taskError" class="dashboard-alert" role="alert">{{ taskError }}</div>
+        <div v-if="dashboard.error" class="dashboard-alert" role="alert">{{ dashboard.error }} <button type="button" @click="dashboard.fetch()">重新載入摘要</button></div>
+      </div>
+
+      <div v-else id="notes-panel" role="tabpanel" aria-labelledby="notes-tab">
+        <div v-if="subjects.error" class="dashboard-alert" role="alert">{{ subjects.error }} <button type="button" @click="subjects.fetchAll()">重試</button></div>
+        <div v-if="subjects.loading" class="note-grid"><div v-for="i in 3" :key="i" class="sticky-note skeleton"></div></div>
+        <section v-else-if="subjects.items?.length" class="note-grid" aria-label="便利貼列表">
         <article v-for="note in subjects.items" :key="note.id" class="sticky-note" :style="{ '--note-color': note.color || '#E9F1D5', '--note-tilt': noteTilt(note.id) }">
           <div class="note-actions"><span v-if="note.studyGoal" class="note-reminder">{{ note.studyGoal }}</span><div><button type="button" @click="openEditor(note)">編輯</button><button class="danger-link" type="button" @click="deleting = note">刪除</button></div></div>
           <h2>{{ note.name }}</h2>
@@ -150,16 +202,18 @@ async function logout() {
             <ul v-if="tasksFor(note.id).length" class="task-list" aria-label="待辦事項">
               <li v-for="task in tasksFor(note.id)" :key="task.id" :class="{ completed: task.completed }">
                 <button type="button" class="task-check" :aria-label="task.completed ? `標示「${task.title}」為未完成` : `標示「${task.title}」為已完成`" :aria-pressed="task.completed" @click="toggleTask(note.id, task.id)">✓</button>
-                <span>{{ task.title }}</span>
-                <button type="button" class="task-delete" :aria-label="`刪除「${task.title}」`" @click="removeTask(note.id, task.id)">×</button>
+                <span><strong>{{ task.title }}</strong><small v-if="task.dueDate || task.priority !== 'MEDIUM'" :class="{ 'overdue-text': task.overdue }">{{ taskDueLabel(task) }}{{ taskDueLabel(task) && task.priority !== 'MEDIUM' ? ' · ' : '' }}{{ task.priority === 'HIGH' ? '高優先' : task.priority === 'LOW' ? '低優先' : '' }}</small></span>
+                <span class="task-row-actions"><button type="button" class="task-edit" :aria-label="`編輯「${task.title}」`" @click="editTask(note.id, task)">✎</button><button type="button" class="task-delete" :aria-label="`刪除「${task.title}」`" @click="removeTask(note.id, task.id, task.title)">×</button></span>
               </li>
             </ul>
-            <form class="add-task" @submit.prevent="addTask(note.id)"><input v-model="taskDrafts[note.id]" :aria-label="`新增「${note.name}」的待辦事項`" maxlength="255" placeholder="新增待辦事項…"><button type="submit" aria-label="新增待辦事項">＋</button></form>
+            <form class="add-task add-task-detailed" @submit.prevent="addTask(note.id)"><input v-model="taskDraft(note.id).title" :aria-label="`新增「${note.name}」的待辦事項`" maxlength="255" placeholder="新增待辦事項…"><select v-model="taskDraft(note.id).priority" aria-label="優先級"><option value="LOW">低</option><option value="MEDIUM">中</option><option value="HIGH">高</option></select><input v-model="taskDraft(note.id).dueDate" type="date" aria-label="到期日"><button type="submit" aria-label="新增待辦事項">＋</button></form>
           </div>
         </article>
         <p v-if="taskError" class="task-error" role="alert">{{ taskError }}</p>
-      </section>
-      <section v-else class="empty-state"><span class="empty-illustration"><svg viewBox="0 0 80 80"><path d="M16 17h37a11 11 0 0 1 11 11v38H27A11 11 0 0 1 16 55V17Z"/><path d="M27 66a11 11 0 0 1 11-11h26M28 31h24M28 40h18"/></svg></span><p class="eyebrow"><span></span>Your first note</p><h2>從第一張便利貼開始</h2><p>把待辦、靈感或學習提醒寫下來，讓重要的事一直留在眼前。</p><button class="button button-primary" type="button" @click="openEditor()">建立第一張便利貼</button></section>
+        </section>
+        <section v-else class="empty-state"><span class="empty-illustration"><svg viewBox="0 0 80 80"><path d="M16 17h37a11 11 0 0 1 11 11v38H27A11 11 0 0 1 16 55V17Z"/><path d="M27 66a11 11 0 0 1 11-11h26M28 31h24M28 40h18"/></svg></span><p class="eyebrow"><span></span>Your first note</p><h2>從第一張便利貼開始</h2><p>把待辦、靈感或學習提醒寫下來，讓重要的事一直留在眼前。</p><button class="button button-primary" type="button" @click="openEditor()">建立第一張便利貼</button></section>
+      </div>
+      </div>
     </main>
 
     <div v-if="editorOpen" class="modal-backdrop" @click.self="editorOpen = false">

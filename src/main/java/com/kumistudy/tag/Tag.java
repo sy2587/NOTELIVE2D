@@ -43,6 +43,8 @@ public class Tag {
         this.name = name;
     }
 
+    public void rename(String name) { this.name = name; }
+
     @PrePersist
     void onCreate() { createdAt = LocalDateTime.now(); updatedAt = createdAt; }
 

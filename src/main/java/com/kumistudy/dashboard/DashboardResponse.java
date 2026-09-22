@@ -8,6 +8,9 @@ public record DashboardResponse(
         long subjectCount,
         long noteCount,
         long pendingTaskCount,
+        long todayTaskCount,
+        long overdueTaskCount,
         List<NoteResponse> recentNotes,
+        List<TaskResponse> todayTasks,
         List<TaskResponse> pendingTasks
 ) { }

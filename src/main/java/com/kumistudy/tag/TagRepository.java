@@ -13,6 +13,7 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     List<Tag> findAllByIdInAndOwnerId(Collection<Long> ids, Long ownerId);
     Optional<Tag> findByIdAndOwnerId(Long id, Long ownerId);
     boolean existsByOwnerIdAndNameIgnoreCase(Long ownerId, String name);
+    boolean existsByOwnerIdAndNameIgnoreCaseAndIdNot(Long ownerId, String name, Long id);
 
     @Modifying
     @Query(value = "DELETE FROM note_tags WHERE tag_id = :tagId", nativeQuery = true)

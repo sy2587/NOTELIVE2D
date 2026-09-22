@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNoteStore } from '../stores/notes'
 import { useTagStore } from '../stores/tags'
@@ -9,17 +9,26 @@ import { primeCsrfToken } from '../api/client'
 import RichTextEditor from '../components/RichTextEditor.vue'
 import RichTextViewer from '../components/RichTextViewer.vue'
 
-const auth = useAuthStore(), notes = useNoteStore(), tags = useTagStore(), folders = useFolderStore(), router = useRouter()
+const auth = useAuthStore(), notes = useNoteStore(), tags = useTagStore(), folders = useFolderStore(), router = useRouter(), route = useRoute()
 const selectedId = ref(null), editorOpen = ref(false), deleting = ref(null), saving = ref(false), formError = ref('')
 const newTagName = ref(''), tagSaving = ref(false), tagError = ref('')
-const folderFilter = ref('all'), newFolderName = ref(''), folderSaving = ref(false), folderError = ref('')
+const filters = reactive({ q: '', folderId: '', tagId: '', favorite: false, page: 0, size: 10 })
+const newFolderName = ref(''), folderSaving = ref(false), folderError = ref('')
 const blank = { id: null, title: '', content: '', favorite: false, pinned: false, tagIds: [], folderId: null }
 const form = reactive({ ...blank })
 const selectedNote = computed(() => notes.items.find(note => note.id === selectedId.value) || null)
-const visibleNotes = computed(() => folderFilter.value === 'all' ? notes.items : notes.items.filter(note => String(note.folder?.id ?? 'none') === folderFilter.value))
+const visibleNotes = computed(() => notes.items)
 
 onMounted(async () => {
-  try { await primeCsrfToken(); await Promise.all([notes.fetchAll(), tags.fetchAll(), folders.fetchAll()]); selectedId.value = notes.items[0]?.id ?? null }
+  try {
+    await primeCsrfToken()
+    await Promise.all([notes.search(filters), tags.fetchAll(), folders.fetchAll()])
+    const requestedId = Number(route.query.note)
+    if (Number.isSafeInteger(requestedId) && requestedId > 0) {
+      const requestedNote = notes.items.find(note => note.id === requestedId) || await notes.fetchOne(requestedId)
+      selectedId.value = requestedNote.id
+    } else selectedId.value = notes.items[0]?.id ?? null
+  }
   catch (error) { if ([401, 403].includes(error.status)) router.push({ path: '/login', query: { redirect: '/notes' } }) }
 })
 
@@ -44,7 +53,25 @@ async function removeTag(tag) {
     notes.items.forEach(note => { note.tags = note.tags?.filter(item => item.id !== tag.id) || [] })
   } catch (error) { tagError.value = error.message }
 }
-function applyFolderFilter() { selectedId.value = visibleNotes.value[0]?.id ?? null }
+async function renameTag(tag) {
+  const name = window.prompt('請輸入新的標籤名稱', tag.name)?.trim()
+  if (!name || name === tag.name) return
+  tagError.value = ''
+  try {
+    const saved = await tags.update(tag.id, name)
+    notes.items.forEach(note => { note.tags = note.tags?.map(item => item.id === tag.id ? saved : item) || [] })
+  } catch (error) { tagError.value = error.fieldErrors?.[0]?.message || error.message }
+}
+async function applyFilters(resetPage = true) {
+  if (resetPage) filters.page = 0
+  await notes.search(filters)
+  selectedId.value = visibleNotes.value[0]?.id ?? null
+}
+async function changePage(page) {
+  if (page < 0 || page >= notes.totalPages || page === notes.page) return
+  filters.page = page
+  await applyFilters(false)
+}
 async function createFolder() {
   const name = newFolderName.value.trim()
   if (!name) return
@@ -60,8 +87,17 @@ async function removeFolder(folder) {
     await folders.remove(folder.id)
     if (form.folderId === folder.id) form.folderId = null
     notes.items.forEach(note => { if (note.folder?.id === folder.id) note.folder = null })
-    applyFolderFilter()
+    await applyFilters()
   } catch (error) { folderError.value = error.message }
+}
+async function renameFolder(folder) {
+  const name = window.prompt('請輸入新的資料夾名稱', folder.name)?.trim()
+  if (!name || name === folder.name) return
+  folderError.value = ''
+  try {
+    const saved = await folders.update(folder.id, name)
+    notes.items.forEach(note => { if (note.folder?.id === folder.id) note.folder = saved })
+  } catch (error) { folderError.value = error.fieldErrors?.[0]?.message || error.message }
 }
 async function saveReaderContent(content) {
   const note = selectedNote.value
@@ -80,6 +116,7 @@ async function logout() { await auth.logout(); router.push('/login') }
       <nav aria-label="主要導覽">
         <RouterLink to="/dashboard"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>我的便利貼</RouterLink>
         <RouterLink class="active" to="/notes"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>學習筆記</RouterLink>
+        <RouterLink to="/tasks"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 2.3 2.3L16 8.7"/></svg>任務管理</RouterLink>
       </nav>
       <div class="sidebar-user"><span class="avatar">{{ auth.user?.displayName?.slice(0, 1) }}</span><div><strong>{{ auth.user?.displayName }}</strong><small>@{{ auth.user?.username }}</small></div><button type="button" aria-label="登出" @click="logout">↗</button></div>
     </aside>
@@ -88,13 +125,20 @@ async function logout() { await auth.logout(); router.push('/login') }
       <div v-if="notes.error" class="dashboard-alert" role="alert">{{ notes.error }} <button type="button" @click="notes.fetchAll()">重試</button></div>
       <div class="notes-workspace" :class="{ loading: notes.loading }">
         <aside class="notes-list-panel" aria-label="筆記選單">
-          <div class="notes-list-heading"><strong>我的筆記</strong><span>{{ visibleNotes.length }}</span></div>
-          <label class="folder-filter"><span class="sr-only">依資料夾篩選</span><select v-model="folderFilter" @change="applyFolderFilter"><option value="all">全部資料夾</option><option value="none">未分類</option><option v-for="folder in folders.items" :key="folder.id" :value="String(folder.id)">{{ folder.name }}</option></select></label>
+          <div class="notes-list-heading"><strong>我的筆記</strong><span>{{ notes.totalElements }}</span></div>
+          <form class="note-search" role="search" @submit.prevent="applyFilters()">
+            <label><span class="sr-only">搜尋筆記</span><input v-model="filters.q" type="search" maxlength="100" placeholder="搜尋標題或內容…"></label>
+            <label><span class="sr-only">依資料夾篩選</span><select v-model="filters.folderId" @change="applyFilters()"><option value="">全部資料夾</option><option value="-1">未分類</option><option v-for="folder in folders.items" :key="folder.id" :value="String(folder.id)">{{ folder.name }}</option></select></label>
+            <label><span class="sr-only">依標籤篩選</span><select v-model="filters.tagId" @change="applyFilters()"><option value="">全部標籤</option><option v-for="tag in tags.items" :key="tag.id" :value="String(tag.id)">{{ tag.name }}</option></select></label>
+            <label class="favorite-filter"><input v-model="filters.favorite" type="checkbox" @change="applyFilters()">只顯示收藏</label>
+            <button type="submit">搜尋</button>
+          </form>
           <div v-if="notes.loading" class="note-list-skeleton"><span v-for="i in 5" :key="i"></span></div>
           <ul v-else-if="visibleNotes.length" class="notes-list">
             <li v-for="note in visibleNotes" :key="note.id"><button type="button" :class="{ selected: note.id === selectedId }" :aria-current="note.id === selectedId ? 'page' : undefined" @click="selectNote(note.id)"><span class="note-list-title">{{ note.title }}</span><small>{{ note.folder?.name || '未分類' }} · {{ dateLabel(note.updatedAt) }}</small><span v-if="note.pinned" class="note-list-pin">置頂</span></button></li>
           </ul>
           <div v-else class="notes-list-empty">尚未建立筆記</div>
+          <nav v-if="notes.totalPages > 1" class="note-pagination" aria-label="筆記分頁"><button type="button" :disabled="notes.page === 0" @click="changePage(notes.page - 1)">上一頁</button><span>{{ notes.page + 1 }} / {{ notes.totalPages }}</span><button type="button" :disabled="notes.page + 1 >= notes.totalPages" @click="changePage(notes.page + 1)">下一頁</button></nav>
         </aside>
         <article v-if="selectedNote" class="note-reader" aria-live="polite">
           <header><div><p class="eyebrow"><span></span>{{ selectedNote.folder?.name || '未分類' }}</p><h2>{{ selectedNote.title }}</h2><p class="note-reader-date">最後更新於 {{ dateLabel(selectedNote.updatedAt) }}</p></div><div class="note-reader-actions"><span v-if="selectedNote.favorite" class="favorite-label">已收藏</span><button type="button" class="button secondary-button" @click="openEditor(selectedNote)">編輯筆記</button><button type="button" class="reader-delete" aria-label="刪除目前筆記" @click="deleting = selectedNote">刪除</button></div></header>
@@ -112,7 +156,7 @@ async function logout() { await auth.logout(); router.push('/login') }
           <fieldset class="folder-picker">
             <legend>資料夾</legend>
             <select v-model="form.folderId"><option :value="null">未分類</option><option v-for="folder in folders.items" :key="folder.id" :value="folder.id">{{ folder.name }}</option></select>
-            <ul v-if="folders.items.length" class="folder-manage"><li v-for="folder in folders.items" :key="folder.id"><span>{{ folder.name }}</span><button type="button" :aria-label="`刪除資料夾 ${folder.name}`" @click="removeFolder(folder)">刪除</button></li></ul>
+            <ul v-if="folders.items.length" class="folder-manage"><li v-for="folder in folders.items" :key="folder.id"><span>{{ folder.name }}</span><button type="button" :aria-label="`重新命名資料夾 ${folder.name}`" @click="renameFolder(folder)">改名</button><button type="button" :aria-label="`刪除資料夾 ${folder.name}`" @click="removeFolder(folder)">刪除</button></li></ul>
             <div class="tag-create"><label for="new-folder-name" class="sr-only">新資料夾名稱</label><input id="new-folder-name" v-model.trim="newFolderName" maxlength="100" placeholder="新增資料夾" @keydown.enter.prevent="createFolder"><button class="button secondary-button" type="button" :disabled="folderSaving || !newFolderName.trim()" @click="createFolder">{{ folderSaving ? '新增中…' : '新增' }}</button></div>
             <p v-if="folderError" class="form-alert" role="alert">{{ folderError }}</p>
           </fieldset>
@@ -120,7 +164,7 @@ async function logout() { await auth.logout(); router.push('/login') }
           <fieldset class="tag-picker">
             <legend>標籤</legend>
             <ul v-if="tags.items.length" class="tag-options">
-              <li v-for="tag in tags.items" :key="tag.id"><label><input v-model="form.tagIds" type="checkbox" :value="tag.id"><span>{{ tag.name }}</span></label><button type="button" :aria-label="`刪除標籤 ${tag.name}`" title="刪除標籤" @click="removeTag(tag)">×</button></li>
+              <li v-for="tag in tags.items" :key="tag.id"><label><input v-model="form.tagIds" type="checkbox" :value="tag.id"><span>{{ tag.name }}</span></label><button type="button" :aria-label="`重新命名標籤 ${tag.name}`" title="重新命名標籤" @click="renameTag(tag)">✎</button><button type="button" :aria-label="`刪除標籤 ${tag.name}`" title="刪除標籤" @click="removeTag(tag)">×</button></li>
             </ul>
             <p v-else class="field-hint">尚未建立標籤</p>
             <div class="tag-create"><label for="new-tag-name" class="sr-only">新標籤名稱</label><input id="new-tag-name" v-model.trim="newTagName" maxlength="50" placeholder="新增標籤" @keydown.enter.prevent="createTag"><button class="button secondary-button" type="button" :disabled="tagSaving || !newTagName.trim()" @click="createTag">{{ tagSaving ? '新增中…' : '新增' }}</button></div>

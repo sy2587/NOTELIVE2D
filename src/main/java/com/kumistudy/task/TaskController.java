@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,6 +43,12 @@ public class TaskController {
     @PostMapping("/{taskId}/toggle")
     public ApiResponse<TaskResponse> toggle(@PathVariable Long subjectId, @PathVariable Long taskId, HttpServletRequest request) {
         return ApiResponse.success(taskService.toggle(currentUserService.requireUserId(request), subjectId, taskId));
+    }
+
+    @PutMapping("/{taskId}")
+    public ApiResponse<TaskResponse> update(@PathVariable Long subjectId, @PathVariable Long taskId,
+                                            @Valid @RequestBody TaskRequest body, HttpServletRequest request) {
+        return ApiResponse.success(taskService.update(currentUserService.requireUserId(request), subjectId, taskId, body));
     }
 
     @DeleteMapping("/{taskId}")

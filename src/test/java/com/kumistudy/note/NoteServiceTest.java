@@ -14,10 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,5 +63,18 @@ class NoteServiceTest {
 
         assertThrows(ApiException.class, () -> service.get(7L, 9L));
         verify(noteRepository).findByIdAndOwnerIdAndDeletedAtIsNull(9L, 7L);
+    }
+
+    @Test
+    void search_shouldNormalizeQueryAndLimitPageSize() {
+        NoteService service = new NoteService(noteRepository, userRepository, tagRepository, folderRepository);
+        when(noteRepository.search(eq(7L), eq("Spring"), eq(2L), eq(3L), eq(true), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        var response = service.search(7L, "  Spring  ", 2L, 3L, true, -5, 500);
+
+        assertEquals(0, response.page());
+        verify(noteRepository).search(eq(7L), eq("Spring"), eq(2L), eq(3L), eq(true),
+                eq(org.springframework.data.domain.PageRequest.of(0, 50)));
     }
 }

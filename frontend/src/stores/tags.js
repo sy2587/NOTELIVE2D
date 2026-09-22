@@ -16,6 +16,11 @@ export const useTagStore = defineStore('tags', {
       this.items = [...this.items, saved].sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
       return saved
     },
+    async update(id, name) {
+      const saved = await apiRequest(`/api/tags/${id}`, { method: 'PUT', body: JSON.stringify({ name }) })
+      this.items = this.items.map(tag => tag.id === id ? saved : tag).sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'))
+      return saved
+    },
     async remove(id) {
       await apiRequest(`/api/tags/${id}`, { method: 'DELETE' })
       this.items = this.items.filter(tag => tag.id !== id)

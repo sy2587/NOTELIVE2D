@@ -18,6 +18,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -49,5 +50,12 @@ class TaskControllerTest {
         mockMvc.perform(post("/api/subjects/2/tasks").with(user("alice")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void update_shouldRequireCsrfToken() throws Exception {
+        mockMvc.perform(put("/api/subjects/2/tasks/9").with(user("alice"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Read\"}"))
+                .andExpect(status().isForbidden());
     }
 }
